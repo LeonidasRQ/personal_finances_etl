@@ -14,7 +14,7 @@ source_file = "mobills_transactions.xlsx"
 source_sheet = "Receitas e Despesas"
 
 # ----------------------
-# CATEGORÍAS Y SUBCATEGORÍAS
+# CATEGORY AND SUBCATEGORY MAPPING
 # ----------------------
 category_to_subcategory = {
     # Necesidades
@@ -46,9 +46,6 @@ category_to_subcategory = {
     "Salary": "Salario",
     "Siblings Support": "Ayuda",
     "Others": "Otro"
-
-    # Default
-    # Si hay algún otro lo marcaría como "Otro"
 }
 
 subcategory_to_category = {
@@ -82,11 +79,11 @@ subcategory_to_category = {
     "Arriendo": "Ingreso",
     "Prestamos": "Ingreso",
     "Prima": "Ingreso",
-    "Otro": "Ingreso"  # fallback para ingresos si aplica
+    "Otro": "Ingreso"
 }
 
 # ----------------------
-# CARGAR EXCEL ORIGEN
+# LOAD SOURCE EXCEL FILE
 # ----------------------
 source_wb = load_workbook(source_file)
 source_ws = source_wb[source_sheet]
@@ -98,37 +95,37 @@ for row in source_ws.iter_rows(min_row=2, values_only=True):
     if date is None or value is None:
         continue
 
-    subcategoria = category_to_subcategory.get(category_origin, "Otro")
-    if subcategoria == "Otro":
-        print(f"⚠️ WARNING: categoría origen '{category_origin}' no reconocida, se asigna 'Otro'")
+    subcategory = category_to_subcategory.get(category_origin, "Otro")
+    if subcategory == "Otro":
+        print(f"⚠️ WARNING: original category '{category_origin}' not recognized, assigned as 'Otro'")
 
-    categoria_base = subcategory_to_category.get(subcategoria, "Ingreso")
-    tipo_flujo = "Ingreso" if categoria_base == "Ingreso" else "Egreso"
-    monto = abs(value)
+    category_base = subcategory_to_category.get(subcategory, "Ingreso")
+    flow_type = "Ingreso" if category_base == "Ingreso" else "Egreso"
+    amount = abs(value)
 
-    if tipo_flujo == "Ingreso":
-        categoria = subcategoria
-        subcategoria_final = ""
+    if flow_type == "Ingreso":
+        category = subcategory
+        final_subcategory = ""
     else:
-        categoria = categoria_base
-        subcategoria_final = subcategoria
+        category = category_base
+        final_subcategory = subcategory
 
     entries.append({
         "fecha": date.strftime("%Y-%m-%d") if isinstance(date, datetime.datetime) else date,
-        "tipo_flujo": tipo_flujo,
-        "categoria": categoria,
-        "subcategoria": subcategoria_final,
+        "tipo_flujo": flow_type,
+        "categoria": category,
+        "subcategoria": final_subcategory,
         "descripcion": description or "",
-        "monto": monto
+        "monto": amount
     })
-    
-    # ORDENA LAS ENTRIES POR FECHA 
-    entries.sort(key=lambda x: x["fecha"])
 
-print(f"✅ {len(entries)} registros cargados y categorizados desde {source_file}")
+# SORT ENTRIES BY DATE
+entries.sort(key=lambda x: x["fecha"])
+
+print(f"✅ {len(entries)} records loaded and categorized from {source_file}")
 
 # ----------------------
-# CARGAR EXCEL DESTINO
+# LOAD TARGET EXCEL FILE
 # ----------------------
 wb = load_workbook(excel_file)
 ws = wb[sheet_name]
@@ -137,56 +134,56 @@ table = ws.tables[table_name]
 min_col, min_row, max_col, max_row = range_boundaries(table.ref)
 
 # ----------------------
-# FUNCIÓN PARA EXTENDER VALIDACIONES
+# FUNCTION TO EXTEND DATA VALIDATIONS
 # ----------------------
-def extend_validations(ws, max_row_before, max_row_after):
+def extend_validations(ws, previous_max_row, new_max_row):
     for dv in ws.data_validations.dataValidation:
         new_sqref = []
         for sq in dv.sqref:
             minc, minr, maxc, maxr = range_boundaries(str(sq))
-            if min_row <= max_row_before <= maxr:
-                new_sqref.append(f"{ws.cell(row=minr, column=minc).coordinate}:{ws.cell(row=max_row_after, column=maxc).coordinate}")
+            if min_row <= previous_max_row <= maxr:
+                new_sqref.append(f"{ws.cell(row=minr, column=minc).coordinate}:{ws.cell(row=new_max_row, column=maxc).coordinate}")
             else:
                 new_sqref.append(str(sq))
         dv.sqref = ' '.join(new_sqref)
 
 # ----------------------
-# INSERTAR CADA REGISTRO
+# INSERT EACH ENTRY INTO THE TABLE
 # ----------------------
 for entry in entries:
-    tipo_flujo = entry["tipo_flujo"]
-    monto = entry["monto"]
+    flow_type = entry["tipo_flujo"]
+    amount = entry["monto"]
 
-    # Convertir fecha string a datetime.date
-    fecha_str = entry["fecha"]
-    fecha = datetime.datetime.strptime(fecha_str, "%d/%m/%Y").date()
+    # Convert date string to datetime.date
+    date_str = entry["fecha"]
+    date_value = datetime.datetime.strptime(date_str, "%d/%m/%Y").date()
 
-    if tipo_flujo == "Ingreso":
-        egreso = ''
-        ingreso = monto
-    elif tipo_flujo == "Egreso":
-        egreso = monto
-        ingreso = ''
+    if flow_type == "Ingreso":
+        expense = ''
+        income = amount
+    elif flow_type == "Egreso":
+        expense = amount
+        income = ''
     else:
-        raise ValueError(f"⚠ Tipo de Flujo inválido: {tipo_flujo}")
+        raise ValueError(f"⚠ Invalid Flow Type: {flow_type}")
 
     new_row_data = [
-        fecha,
-        tipo_flujo,
+        date_value,
+        flow_type,
         entry["categoria"],
         entry["subcategoria"],
         entry["descripcion"],
-        egreso,
-        ingreso
+        expense,
+        income
     ]
 
     next_row = max_row + 1
 
-    # Insertar valores
+    # Insert values
     for idx, value in enumerate(new_row_data, start=min_col):
         ws.cell(row=next_row, column=idx, value=value)
 
-    # Copiar estilos
+    # Copy styles from previous row
     for idx in range(min_col, max_col + 1):
         source_cell = ws.cell(row=max_row, column=idx)
         target_cell = ws.cell(row=next_row, column=idx)
@@ -198,7 +195,7 @@ for entry in entries:
             target_cell.protection = copy(source_cell.protection)
             target_cell.alignment = copy(source_cell.alignment)
 
-    # Copiar fórmula balance
+    # Copy balance formula
     balance_col = max_col
     source_balance_cell = ws.cell(row=max_row, column=balance_col)
     target_balance_cell = ws.cell(row=next_row, column=balance_col)
@@ -215,17 +212,17 @@ for entry in entries:
     target_balance_cell.protection = copy(source_balance_cell.protection)
     target_balance_cell.alignment = copy(source_balance_cell.alignment)
 
-    # Actualizar fila actual
+    # Update max_row for next iteration
     max_row = next_row
 
 # ----------------------
-# EXTENDER VALIDACIONES Y TABLA
+# EXTEND VALIDATIONS AND TABLE RANGE
 # ----------------------
 extend_validations(ws, max_row - len(entries), max_row)
 table.ref = f"{ws.cell(row=min_row, column=min_col).coordinate}:{ws.cell(row=max_row, column=max_col).coordinate}"
 
 # ----------------------
-# GUARDAR
+# SAVE FILE
 # ----------------------
 wb.save(excel_file)
-print(f"✅ {len(entries)} filas agregadas con estilos, fórmulas y validaciones.")
+print(f"✅ {len(entries)} rows added with styles, formulas, and validations.")
