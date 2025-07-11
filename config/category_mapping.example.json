@@ -1,0 +1,32 @@
+{
+  "category_to_subcategory": {
+    "Home Expenses": "Utilities",
+    "Groceries": "Food",
+    "Gym Membership": "Fitness",
+    "Public Transport": "Commute",
+    "Movies": "Leisure",
+    "Concerts": "Entertainment",
+    "Gift Purchases": "Gifts",
+    "Credit Card Payment": "Debt",
+    "Salary": "Main Income",
+    "Freelance": "Side Income",
+    "Bonus": "Bonus Income",
+    "Interest Earned": "Investments",
+    "Misc": "Other"
+  },
+  "subcategory_to_category": {
+    "Utilities": "Living Costs",
+    "Food": "Living Costs",
+    "Fitness": "Health",
+    "Commute": "Transportation",
+    "Leisure": "Lifestyle",
+    "Entertainment": "Lifestyle",
+    "Gifts": "Discretionary",
+    "Debt": "Financial Obligations",
+    "Main Income": "Income",
+    "Side Income": "Income",
+    "Bonus Income": "Income",
+    "Investments": "Passive Income",
+    "Other": "Miscellaneous"
+  }
+}

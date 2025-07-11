@@ -1,68 +1,73 @@
-# Cashflow Excel Automation
+# 📊 ETL for Personal Finance (Excel)
 
-Este es un script en Python que automatiza la adición de registros a una hoja de Excel tipo cashflow.  
-Permite agregar múltiples filas en una sola ejecución, respetando:
+This is a simple ETL (Extract, Transform, Load) script written in Python that reads financial transactions from a source Excel file, maps and categorizes the data according to your personal finance rules, and loads them into a cashflow table in your main Excel workbook.
 
-- El formato (estilos, fuentes, bordes) de la última fila.
-- La fórmula del balance acumulado.
-- Las validaciones de datos (listas desplegables).
-- Reglas automáticas según tipo de flujo (Ingreso/Egreso).
+The script:
 
----
+✅ Reads transactions from a mobills_transactions.xlsx file (sheet Receitas e Despesas).
 
-## 🚀 Requisitos
+✅ Maps categories and subcategories to your custom finance structure.
+✅ Sorts entries by date in ascending order.
 
-- Python 3.10+ (instalado vía [Scoop](https://scoop.sh) o manual).
-- Virtual environment (venv).
+✅ Inserts them into your copia_finanzas.xlsx cashflow table, preserving all styles, formulas, and validations.
 
----
+✅ Allows a --dry-run mode for safe testing.
 
-## ⚙️ Instalación
-
-1. Clona o copia este repositorio.
-
-2. Crea y activa un entorno virtual:
-
-   ```bash
-   python -m venv venv
-   .\venv\Scripts\Activate
-   ```
-
-   En Windows PowerShell:
-
-   ```powershell
-   .\venv\Scripts\activate
-   ```
-
-3. Instala las dependencias:
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
----
-
-## 📝 Configuración
-
-- Asegúrate de tener tu archivo de Excel `copia_finanzas.xlsx` en el mismo directorio (o ajusta el path en `append_to_cashflow.py`).
-- Configura las entradas que quieras insertar editando el arreglo `entries` en el script.
-
----
-
-## 🚀 Ejecución
-
-Con el entorno virtual activo, ejecuta:
+## 🚀 Usage
 
 ```bash
-python append_to_cashflow.py
+python etl_finance.py
 ```
 
----
+You can also run in dry-run mode (no changes to your Excel file, only shows what would be inserted):
 
-## ✅ Estado del proyecto
+```bash
+python etl_finance.py --dry-run
+```
 
-✅ Inserta múltiples registros en una sola ejecución.
+Or use different source / target files:
 
-✅ Mantiene el estilo, validaciones y cálculos.
+```bash
+python etl_finance.py --source "my_new_transactions.xlsx" --dest "my_finances.xlsx"
+```
 
-🚀 Planeado: leer datos desde CSV o preguntar datos interactivos.
+## ⚙️ Requirements
+
+- Python 3.10+ (recommended installed via scoop)
+- Install dependencies
+
+```
+pip install -r requirements.txt
+```
+
+## Project Structure
+
+```bash
+etl-finanzas/
+│
+├── etl_finance.py
+├── requirements.txt
+├── README.md
+├── .gitignore
+│
+├── config/
+│   └── category_mapping.json
+│
+├── data/
+│   ├── mobills_transactions.xlsx
+│   └── copia_finanzas.xlsx
+│
+└── logs/
+    └── etl.log (creado por el script)
+```
+
+## ✌️ Features
+
+✅ Loads data from Excel (via openpyxl), no extra database or API needed.
+
+✅ Fully customizable category & subcategory mapping.
+
+✅ Keeps all your existing Excel formatting, data
+validations, and formulas.
+
+✅ Logs everything with levels INFO and WARNING.

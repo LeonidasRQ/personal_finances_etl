@@ -2,7 +2,7 @@
 venv/
 
 # Excel files (tu base de datos personal)
-*.xlsx
+data/*.xlsx
 
 # Archivos temporales
 *.pyc
@@ -12,3 +12,13 @@ __pycache__/
 .vscode/
 .idea/
 *.swp
+
+# Logs
+logs/
+*.log
+
+# Ignore local category mapping
+config/category_mapping.json
+
+# Keep the example tracked
+!config/category_mapping.example.json
