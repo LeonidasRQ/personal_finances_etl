@@ -1,0 +1,14 @@
+# Python virtual environment
+venv/
+
+# Excel files (tu base de datos personal)
+*.xlsx
+
+# Archivos temporales
+*.pyc
+__pycache__/
+
+# Configuración de tu editor
+.vscode/
+.idea/
+*.swp
