@@ -25,6 +25,7 @@ Permite agregar múltiples filas en una sola ejecución, respetando:
 
    ```bash
    python -m venv venv
+   .\venv\Scripts\Activate
    ```
 
    En Windows PowerShell:
