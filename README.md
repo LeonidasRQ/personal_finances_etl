@@ -1,73 +1,122 @@
-# 📊 ETL for Personal Finance (Excel)
+# 🧾 Python Finance ETL
 
-This is a simple ETL (Extract, Transform, Load) script written in Python that reads financial transactions from a source Excel file, maps and categorizes the data according to your personal finance rules, and loads them into a cashflow table in your main Excel workbook.
+A modular ETL (Extract, Transform, Load) tool built in Python, designed to automate the ingestion of financial transactions from a source Excel file (like Mobills export), map their categories and subcategories, and load them into a structured Excel cashflow workbook (such as your personal finance tracker).
 
-The script:
+---
 
-✅ Reads transactions from a mobills_transactions.xlsx file (sheet Receitas e Despesas).
+## 🚀 Features
 
-✅ Maps categories and subcategories to your custom finance structure.
-✅ Sorts entries by date in ascending order.
+✅ Load transactions from a configurable Excel source file  
+✅ Map categories and subcategories dynamically via JSON config  
+✅ Insert into an existing cashflow Excel workbook, extending tables, formulas & validations  
+✅ Dry-run mode to preview changes without saving  
+✅ Loads environment variables from `.env`  
+✅ Modular, easy to extend
 
-✅ Inserts them into your copia_finanzas.xlsx cashflow table, preserving all styles, formulas, and validations.
+---
 
-✅ Allows a --dry-run mode for safe testing.
-
-## 🚀 Usage
-
-```bash
-python etl_finance.py
-```
-
-You can also run in dry-run mode (no changes to your Excel file, only shows what would be inserted):
+## 📂 Project structure
 
 ```bash
-python etl_finance.py --dry-run
+etl-finanzas/
+├── config/
+│   └── category_mapping.json
+|
+├── logs/
+|   └── etl.log (created by script)0
+|
+├── .env
+├── .gitignore
+├── etl_finance.py
+├── README.md
+└── requirements.txt
 ```
 
-Or use different source / target files:
+## ⚙️ Configuration
 
-```bash
-python etl_finance.py --source "my_new_transactions.xlsx" --dest "my_finances.xlsx"
+### 📌 .env file
+
+All your critical settings are stored in `.env`:
+
+```env
+DEST_FILE=""
+SOURCE_FILE=""
+MAPPING_FILE=""
+LOG_FILE="logs/etl_run.log"
 ```
 
-## ⚙️ Requirements
+This is loaded via `python-dotenv`
 
-- Python 3.10+ (recommended installed via scoop)
-- Install dependencies
+### Mapping JSON
+
+Example mapping.json to control how your original categories are transformed:
+
+```json
+{
+  "category_to_subcategory": {
+    "Supermarket": "Groceries",
+    "Restaurant": "Eating Out",
+    "Transportation": "Commute",
+    "Salary": "Salary"
+  },
+  "subcategory_to_category": {
+    "Groceries": "Needs",
+    "Eating Out": "Wants",
+    "Commute": "Needs",
+    "Salary": "Income"
+  }
+}
+```
+
+This makes it easy to change your classification without modifying Python code.
+
+## Installation
+
+1. Clone the repo
+
+```
+git clone git@github.com:LeonidasRQ/personal_finances_etl.git
+cd personal_finances_etl
+```
+
+2. Create virtual environment
+
+```
+python -m venv venv
+source venv/bin/activate  # or venv\Scripts\activate on Windows
+```
+
+3. Install dependencies
 
 ```
 pip install -r requirements.txt
 ```
 
-## Project Structure
+## 🚀 Usage
 
-```bash
-etl-finanzas/
-│
-├── etl_finance.py
-├── requirements.txt
-├── README.md
-├── .gitignore
-│
-├── config/
-│   └── category_mapping.json
-│
-├── data/
-│   ├── mobills_transactions.xlsx
-│   └── copia_finanzas.xlsx
-│
-└── logs/
-    └── etl.log (creado por el script)
+Run your ETL pipeline like this
+
+```
+python etl_finance.py
 ```
 
-## ✌️ Features
+Want to test without writing changes to your cashflow file?
 
-✅ Loads data from Excel (via openpyxl), no extra database or API needed.
+```
+python etl_finance.py --dry-run
+```
 
-✅ Fully customizable category & subcategory mapping.
+You’ll see logs of all planned inserts without modifying your file.
 
-✅ Keeps all your existing Excel formatting, data
-validations, and formulas.
+## ⚙️ Requirements
 
-✅ Logs everything with levels INFO and WARNING.
+- Python 3.10+ (recommended installed via scoop)
+
+## 🤝 Contributing
+
+PRs & suggestions welcome!
+You can file issues or ideas for additional transformations (like VAT splitting, multi-currency support).
+
+## 📝 License
+
+MIT — do what you want, but no guarantees.

@@ -3,105 +3,96 @@ import datetime
 import json
 import logging
 import os
+
 from openpyxl import load_workbook
 from openpyxl.utils import range_boundaries
 from copy import copy
+from dotenv import load_dotenv
 
-# ----------------------
-# LOGGING SETUP
-# ----------------------
-log_dir = "logs"
-os.makedirs(log_dir, exist_ok=True)
+# Load environment variables from .env file
+load_dotenv()
+
+# Get environment config
+DEST_FILE = os.getenv("DEST_FILE")
+SOURCE_FILE = os.getenv("SOURCE_FILE")
+MAPPING_FILE = os.getenv("MAPPING_FILE")
+LOG_FILE = os.getenv("LOG_FILE")
+
+# Logging
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
+    format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler(os.path.join(log_dir, "etl.log")),
+        logging.FileHandler(LOG_FILE, encoding='utf-8'),
         logging.StreamHandler()
     ]
 )
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
-# ----------------------
-# CONFIG LOADER
-# ----------------------
-def load_mapping_config(config_path):
-    """Load category mapping from JSON config file."""
-    try:
-        with open(config_path, "r", encoding="utf-8") as f:
-            mapping = json.load(f)
-        logger.info(f"Loaded category mapping from {config_path}")
-        return mapping["category_to_subcategory"], mapping["subcategory_to_category"]
-    except Exception as e:
-        logger.error(f"Failed to load config: {e}")
-        raise SystemExit(1)
 
-# ----------------------
-# SOURCE DATA LOADER
-# ----------------------
-def extract_source_data(source_file, source_sheet, category_to_subcategory, subcategory_to_category):
-    """Extract and map data from source Excel."""
-    try:
-        wb = load_workbook(source_file)
-        ws = wb[source_sheet]
-        logger.info(f"Loaded source file: {source_file}")
-    except Exception as e:
-        logger.error(f"Failed to load source Excel: {e}")
-        raise SystemExit(1)
+def load_mapping(file_path):
+    with open(file_path, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
-    entries = []
+
+def load_source_data(file_path):
+    wb = load_workbook(file_path, data_only=True)
+    ws = wb.active
+    data = []
     for row in ws.iter_rows(min_row=2, values_only=True):
-        date, description, value, category_origin = row[0], row[1], row[2], row[5]
+        date, description, value, _, _, category_origin = row[:6]
         if date is None or value is None:
             continue
+        data.append({
+            "date": date,
+            "description": description or "",
+            "value": abs(value),
+            "category_origin": category_origin
+        })
+    return data
 
-        subcategoria = category_to_subcategory.get(category_origin, "Otro")
-        if subcategoria == "Otro":
-            logger.warning(f"Unknown origin category '{category_origin}', using 'Otro'")
 
-        categoria_base = subcategory_to_category.get(subcategoria, "Ingreso")
-        tipo_flujo = "Ingreso" if categoria_base == "Ingreso" else "Egreso"
-        monto = abs(value)
+def parse_date(date_str):
+    if isinstance(date_str, datetime.date):
+        return date_str
+    return datetime.datetime.strptime(date_str, "%d/%m/%Y").date()
 
-        if tipo_flujo == "Ingreso":
-            categoria = subcategoria
-            subcategoria_final = ""
+
+def map_data(raw_data, mapping):
+    category_to_subcategory = mapping["category_to_subcategory"]
+    subcategory_to_category = mapping["subcategory_to_category"]
+
+    mapped = []
+    for item in raw_data:
+        subcategory = category_to_subcategory.get(item["category_origin"], "Otro")
+        category_base = subcategory_to_category.get(subcategory, "Ingreso")
+        flow_type = "Ingreso" if category_base == "Ingreso" else "Egreso"
+
+        if flow_type == "Ingreso":
+            category = subcategory
+            final_subcategory = ""
         else:
-            categoria = categoria_base
-            subcategoria_final = subcategoria
+            category = category_base
+            final_subcategory = subcategory
 
-        entries.append({
-            "fecha": date.strftime("%Y-%m-%d") if isinstance(date, datetime.datetime) else date,
-            "tipo_flujo": tipo_flujo,
-            "categoria": categoria,
-            "subcategoria": subcategoria_final,
-            "descripcion": description or "",
-            "monto": monto
+        mapped.append({
+            "date": item["date"],
+            "flow_type": flow_type,
+            "category": category,
+            "subcategory": final_subcategory,
+            "description": item["description"],
+            "amount": item["value"]
         })
 
-    entries.sort(key=lambda x: x["fecha"])
-    logger.info(f"{len(entries)} records loaded and mapped from {source_file}")
-    return entries
+    for item in mapped:
+        item["date"] = parse_date(item["date"])
 
-# ----------------------
-# DEST FILE LOADER
-# ----------------------
-def load_destination(dest_file, dest_sheet, table_name):
-    """Load destination workbook, worksheet and table boundaries."""
-    try:
-        wb = load_workbook(dest_file)
-        ws = wb[dest_sheet]
-        table = ws.tables[table_name]
-        min_col, min_row, max_col, max_row = range_boundaries(table.ref)
-        logger.info(f"Loaded destination workbook {dest_file}, table {table_name}")
-        return wb, ws, table, min_col, min_row, max_col, max_row
-    except Exception as e:
-        logger.error(f"Failed to load destination workbook: {e}")
-        raise SystemExit(1)
+    mapped.sort(key=lambda x: x["date"])
+    # Sort ascending by date
+    mapped.sort(key=lambda x: x["date"])
+    return mapped
 
-# ----------------------
-# EXTEND VALIDATIONS
-# ----------------------
+
 def extend_validations(ws, min_row, max_row_before, max_row_after):
     for dv in ws.data_validations.dataValidation:
         new_sqref = []
@@ -113,27 +104,38 @@ def extend_validations(ws, min_row, max_row_before, max_row_after):
                 new_sqref.append(str(sq))
         dv.sqref = ' '.join(new_sqref)
 
-# ----------------------
-# INSERT TRANSFORMED DATA
-# ----------------------
-def insert_entries(ws, table, entries, min_col, min_row, max_col, max_row):
+
+def insert_into_excel(entries, dest_file):
+    wb = load_workbook(dest_file)
+    ws = wb.active
+
+    # Get first table
+    table = list(ws.tables.values())[0]
+    min_col, min_row, max_col, max_row = range_boundaries(table.ref)
+
     for entry in entries:
-        tipo_flujo = entry["tipo_flujo"]
-        monto = entry["monto"]
+        flow_type = entry["flow_type"]
+        amount = entry["amount"]
 
-        fecha_str = entry["fecha"]
-        fecha = datetime.datetime.strptime(fecha_str, "%d/%m/%Y").date()
+        # Fix date
+        date = entry["date"]
+        if isinstance(date, str):
+            try:
+                date = datetime.datetime.strptime(date, "%d/%m/%Y").date()
+            except ValueError:
+                date = datetime.datetime.strptime(date, "%Y/%m/%d").date()
 
-        egreso, ingreso = ('', monto) if tipo_flujo == "Ingreso" else (monto, '')
+        expense = amount if flow_type == "Egreso" else ""
+        income = amount if flow_type == "Ingreso" else ""
 
         new_row_data = [
-            fecha,
-            tipo_flujo,
-            entry["categoria"],
-            entry["subcategoria"],
-            entry["descripcion"],
-            egreso,
-            ingreso
+            date,
+            flow_type,
+            entry["category"],
+            entry["subcategory"],
+            entry["description"],
+            expense,
+            income
         ]
 
         next_row = max_row + 1
@@ -154,7 +156,7 @@ def insert_entries(ws, table, entries, min_col, min_row, max_col, max_row):
                 target_cell.protection = copy(source_cell.protection)
                 target_cell.alignment = copy(source_cell.alignment)
 
-        # Copy balance formula
+        # Copy formula
         balance_col = max_col
         source_balance_cell = ws.cell(row=max_row, column=balance_col)
         target_balance_cell = ws.cell(row=next_row, column=balance_col)
@@ -163,6 +165,7 @@ def insert_entries(ws, table, entries, min_col, min_row, max_col, max_row):
         else:
             target_balance_cell.value = source_balance_cell.value
 
+        # Copy style
         target_balance_cell.font = copy(source_balance_cell.font)
         target_balance_cell.border = copy(source_balance_cell.border)
         target_balance_cell.fill = copy(source_balance_cell.fill)
@@ -172,29 +175,31 @@ def insert_entries(ws, table, entries, min_col, min_row, max_col, max_row):
 
         max_row = next_row
 
+    # Extend validations & table
     extend_validations(ws, min_row, max_row - len(entries), max_row)
     table.ref = f"{ws.cell(row=min_row, column=min_col).coordinate}:{ws.cell(row=max_row, column=max_col).coordinate}"
-    return max_row
 
-# ----------------------
-# MAIN
-# ----------------------
+    return wb, ws, table, max_row
+
+
 def main():
-    parser = argparse.ArgumentParser(description="ETL script to import and map Excel financial transactions.")
-    parser.add_argument("--source", default="data/mobills_transactions.xlsx", help="Source Excel file")
-    parser.add_argument("--dest", default="data/copia_finanzas.xlsx", help="Destination Excel file")
-    parser.add_argument("--config", default="config/category_mapping.json", help="JSON config file with category mappings")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", action="store_true", help="Run without saving changes to the file")
     args = parser.parse_args()
 
-    category_to_subcategory, subcategory_to_category = load_mapping_config(args.config)
-    entries = extract_source_data(args.source, "Receitas e Despesas", category_to_subcategory, subcategory_to_category)
-    wb, ws, table, min_col, min_row, max_col, max_row = load_destination(args.dest, "cashflow", "flujo_dinero")
-    max_row = insert_entries(ws, table, entries, min_col, min_row, max_col, max_row)
-    wb.save(args.dest)
-    logger.info(f"Inserted {len(entries)} rows into {args.dest}")
+    mapping = load_mapping(MAPPING_FILE)
+    raw_data = load_source_data(SOURCE_FILE)
+    entries = map_data(raw_data, mapping)
+    logger.info(f"Loaded and mapped {len(entries)} records from {SOURCE_FILE}")
 
-# ----------------------
-# ENTRY POINT
-# ----------------------
+    wb, ws, table, last_row = insert_into_excel(entries, DEST_FILE)
+
+    if args.dry_run:
+        logger.info(f"[DRY RUN] Would insert {len(entries)} rows into {DEST_FILE}")
+    else:
+        wb.save(DEST_FILE)
+        logger.info(f"✅ Inserted {len(entries)} rows into {DEST_FILE}")
+
+
 if __name__ == "__main__":
     main()
