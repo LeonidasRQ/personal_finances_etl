@@ -1,53 +1,96 @@
 # 🧾 Python Finance ETL
 
-A modular ETL (Extract, Transform, Load) tool built in Python, designed to automate the ingestion of financial transactions from a source Excel file (like Mobills export), map their categories and subcategories, and load them into a structured Excel cashflow workbook (such as your personal finance tracker).
+A modular ETL (Extract, Transform, Load) pipeline built in Python, designed to automate the ingestion of financial transactions from Excel files, map their categories, and load them into structured Excel cashflow workbooks.
 
 ---
 
 ## 🚀 Features
 
-✅ Load transactions from a configurable Excel source file  
-✅ Map categories and subcategories dynamically via JSON config  
-✅ Insert into an existing cashflow Excel workbook, extending tables, formulas & validations  
-✅ Dry-run mode to preview changes without saving  
-✅ Loads environment variables from `.env`  
-✅ Modular, easy to extend
+✅ **Modular Architecture** - Separate modules for extraction, transformation, and loading  
+✅ **Type Safety** - Full type hints and data validation using dataclasses  
+✅ **Comprehensive Testing** - Unit tests with 94% coverage  
+✅ **Category Mapping** - Dynamic category mapping via JSON configuration  
+✅ **Excel Integration** - Preserves formatting, formulas, and table structures  
+✅ **Dry-run Mode** - Preview changes without saving  
+✅ **Environment Configuration** - Configurable via environment variables  
+✅ **Logging** - Comprehensive logging with file and console output  
+✅ **Data Validation** - Input validation and error handling
 
 ---
 
-## 📂 Project structure
+## 📂 Project Structure
 
 ```bash
-etl-finanzas/
+python_excel/
+├── src/                           # Source code
+│   ├── etl/                      # ETL pipeline modules
+│   │   ├── extractors.py         # Data extraction from Excel
+│   │   ├── transformers.py       # Category mapping and transformation
+│   │   ├── loaders.py            # Data loading to Excel
+│   │   └── pipeline.py           # Main pipeline orchestration
+│   ├── models/
+│   │   └── data_models.py        # Data classes and schemas
+│   ├── utils/
+│   │   ├── excel_utils.py        # Excel utility functions
+│   │   ├── date_utils.py         # Date parsing utilities
+│   │   └── logging_config.py     # Logging configuration
+│   └── config/
+│       └── settings.py           # Configuration management
+├── scripts/
+│   ├── run_etl.py                # Main entry point
+│   └── validate_data.py          # Data validation script
+├── tests/                        # Test suite
+│   ├── fixtures/                 # Test data
+│   ├── conftest.py              # Test configuration
+│   └── test_*.py                # Test modules
 ├── config/
-│   └── category_mapping.json
-|
-├── logs/
-|   └── etl.log (created by script)0
-|
-├── .env
-├── .gitignore
-├── etl_finance.py
-├── README.md
-└── requirements.txt
+│   └── category_mapping.json    # Category mapping configuration
+├── logs/                         # Log files
+├── .env                          # Environment variables
+├── requirements.txt              # Dependencies
+├── setup.py                      # Package setup
+└── README.md
 ```
+
+---
+
+## 🔧 Installation
+
+### Prerequisites
+
+- Python 3.8 or higher
+- pip package manager
+
+### Install Dependencies
+
+```bash
+# Create virtual environment (recommended)
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Or install in development mode
+pip install -e .[dev]
+```
+
+---
 
 ## ⚙️ Configuration
 
-### 📌 .env file
+### 📌 Environment Variables
 
-All your critical settings are stored in `.env`:
+Create a `.env` file in the project root:
 
 ```env
-DEST_FILE=""
-SOURCE_FILE=""
-MAPPING_FILE=""
+DEST_FILE="path/to/your/destination.xlsx"
+SOURCE_FILE="path/to/your/source.xlsx"
+MAPPING_FILE="config/category_mapping.json"
 LOG_FILE="logs/etl_run.log"
 ```
 
-This is loaded via `python-dotenv`
-
-### Mapping JSON
+### 🗺️ Category Mapping
 
 Example mapping.json to control how your original categories are transformed:
 

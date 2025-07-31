@@ -1,27 +1,64 @@
-# Environment variables
-.env
-
-# Python virtual environment
-venv/
-
-# Excel files (tu base de datos personal)
-data/*.xlsx
-
-# Archivos temporales
-*.pyc
+# Python
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Configuración de tu editor
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
 .vscode/
 .idea/
 *.swp
+*.swo
+*~
 
 # Logs
 logs/
 *.log
 
-# Ignore local category mapping
-config/category_mapping.json
+# Excel temporary files
+~$*.xlsx
+~$*.xls
 
-# Keep the example tracked
-!config/category_mapping.example.json
+# OS
+.DS_Store
+Thumbs.db
+
+# Config
+config/category_mapping.json
